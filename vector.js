@@ -1,55 +1,62 @@
-import GeometryType from 'ol/geom/geometrytype';
-import olproj from 'ol/proj';
-import olcolor from 'ol/color';
+import GeometryType from "ol/geom/geometrytype";
+import olproj from "ol/proj";
+import olcolor from "ol/color";
 
-import {Shape} from 'three/src/extras/core/Shape';
-import {Path} from 'three/src/extras/core/Path';
-import {ShapeGeometry, ShapeBufferGeometry} from 'three/src/geometries/ShapeGeometry';
-import {Geometry} from 'three/src/core/Geometry';
-import {BufferGeometry} from 'three/src/core/BufferGeometry';
-import {Mesh} from 'three/src/objects/Mesh'
-import {Line} from 'three/src/objects/Line'
-import {MeshBasicMaterial} from 'three/src/materials/MeshBasicMaterial'
-import {LineBasicMaterial} from 'three/src/materials/LineBasicMaterial'
-import {Vector2} from 'three/src/math/Vector2';
-import {Vector3} from 'three/src/math/Vector3';
-import {ShapeUtils} from 'three/src/extras/ShapeUtils';
-import {InterleavedBuffer} from 'three/src/core/InterleavedBuffer';
-import {InterleavedBufferAttribute} from 'three/src/core/InterleavedBufferAttribute';
-import {Matrix4} from 'three/src/math/Matrix4';
-import {ShaderMaterial} from 'three/src/materials/ShaderMaterial';
-import {Color} from 'three/src/math/Color';
+import { Shape } from "three/src/extras/core/Shape";
+import { Path } from "three/src/extras/core/Path";
+import {
+  ShapeGeometry,
+  ShapeBufferGeometry
+} from "three/src/geometries/ShapeGeometry";
+import { Geometry } from "three/src/core/Geometry";
+import { BufferGeometry } from "three/src/core/BufferGeometry";
+import { Mesh } from "three/src/objects/Mesh";
+import { Line } from "three/src/objects/Line";
+import { MeshBasicMaterial } from "three/src/materials/MeshBasicMaterial";
+import { LineBasicMaterial } from "three/src/materials/LineBasicMaterial";
+import { Vector2 } from "three/src/math/Vector2";
+import { Vector3 } from "three/src/math/Vector3";
+import { ShapeUtils } from "three/src/extras/ShapeUtils";
+import { InterleavedBuffer } from "three/src/core/InterleavedBuffer";
+import { InterleavedBufferAttribute } from "three/src/core/InterleavedBufferAttribute";
+import { Matrix4 } from "three/src/math/Matrix4";
+import { ShaderMaterial } from "three/src/materials/ShaderMaterial";
+import { Color } from "three/src/math/Color";
 
-import {DoubleSide} from 'three/src/Three'
+import { DoubleSide } from "three/src/Three";
 
-import polygonVS from './polygonVS.glsl' 
-import polygonFS from './polygonFS.glsl'
-
-
+import polygonVS from "./polygonVS.glsl";
+import polygonFS from "./polygonFS.glsl";
 
 // const material = new MeshBasicMaterial( { color: 0x2222ff, opacity: 0.4, transparent: true, depthTest: false } );
-export const polygonMaterial = new ShaderMaterial({ 
-  uniforms: {
-  },
-  vertexShader: polygonVS, 
+export const polygonMaterial = new ShaderMaterial({
+  uniforms: {},
+  vertexShader: polygonVS,
   fragmentShader: polygonFS,
   transparent: true,
   depthTest: false
 });
 
-export const lineMaterial = new LineBasicMaterial( {
-	color: 0x2222ff,
-	linewidth: 1,
+export const lineMaterial = new LineBasicMaterial({
+  color: 0x2222ff,
+  linewidth: 1,
   transparent: true,
   depthTest: false
 });
 
-const holeMaterial = new MeshBasicMaterial( { color: 0xff2222, opacity: 0.4, transparent: true, depthTest: false } );
+const holeMaterial = new MeshBasicMaterial({
+  color: 0xff2222,
+  opacity: 0.4,
+  transparent: true,
+  depthTest: false
+});
 
 export function renderFeature(olFeature, olStyles, arrays, proj1, proj2) {
   const olGeom = olFeature.getGeometry();
 
-  if (!olGeom) { return }
+  if (!olGeom) {
+    return;
+  }
 
   if (proj1 && proj2 && !olproj.equivalent(proj1, proj2)) {
     olGeom.transform(proj1, proj2);
@@ -59,7 +66,9 @@ export function renderFeature(olFeature, olStyles, arrays, proj1, proj2) {
   switch (olGeom.getType()) {
     case GeometryType.LINE_STRING:
     case GeometryType.MULTI_LINE_STRING:
-      return olStyles.forEach(style => renderLinestringGeometry(olGeom, style, arrays));
+      return olStyles.forEach(style =>
+        renderLinestringGeometry(olGeom, style, arrays)
+      );
       break;
     case GeometryType.LINEAR_RING:
       break;
@@ -72,7 +81,9 @@ export function renderFeature(olFeature, olStyles, arrays, proj1, proj2) {
     case GeometryType.POINT:
       break;
     case GeometryType.POLYGON:
-      return olStyles.forEach(style => renderPolygonGeometry(olGeom, style, arrays));
+      return olStyles.forEach(style =>
+        renderPolygonGeometry(olGeom, style, arrays)
+      );
       break;
   }
 }
@@ -81,34 +92,42 @@ export function renderFeature(olFeature, olStyles, arrays, proj1, proj2) {
 // arrays can hold: indices, positions, colors, uvs,
 // linePositions, lineColors, lineEnds
 function renderPolygonGeometry(olGeom, olStyle, arrays) {
-  if (!olStyle) { return; }
+  if (!olStyle) {
+    return;
+  }
 
   const ends = olGeom.getEnds();
   const stride = olGeom.getStride();
   const coordReduce = (acc, curr, i, array) => {
     if ((i + 1) % stride === 0) {
-      acc.push(new Vector3(array[i - stride + 1], array[i - stride + 2], stride > 2 ? array[i - stride + 3] : 0));
+      acc.push(
+        new Vector3(
+          array[i - stride + 1],
+          array[i - stride + 2],
+          stride > 2 ? array[i - stride + 3] : 0
+        )
+      );
     }
     return acc;
-  }
-  const colorMap = (c, i) => i < 3 ? c / 255 : c
+  };
+  const colorMap = (c, i) => (i < 3 ? c / 255 : c);
 
   const flatCoordinates = olGeom.getFlatCoordinates();
 
   if (ends.length === 0) {
-    return null
+    return null;
   }
 
   let ring, outerRing, hole, holeRings, i;
 
   // get parameters from style
-  const fillColor = olStyle.getFill() ?
-    olcolor.asArray(olStyle.getFill().getColor()).map(colorMap) :
-    [0, 0, 0, 0];
+  const fillColor = olStyle.getFill()
+    ? olcolor.asArray(olStyle.getFill().getColor()).map(colorMap)
+    : [0, 0, 0, 0];
 
-  const strokeColor = olStyle.getStroke() ?
-    olcolor.asArray(olStyle.getStroke().getColor()).map(colorMap) :
-    null;
+  const strokeColor = olStyle.getStroke()
+    ? olcolor.asArray(olStyle.getStroke().getColor()).map(colorMap)
+    : null;
 
   // appends given arrays by triangulating outer & inner rings
   const appendArrays = () => {
@@ -118,41 +137,87 @@ function renderPolygonGeometry(olGeom, olStyle, arrays) {
     let i, l;
     let j, hole;
     for (i = 0, l = outerRing.length - 1; i < l; i++) {
-      arrays.positions && arrays.positions.push(outerRing[i].x, outerRing[i].y, 0);
-      arrays.colors && arrays.colors.push(fillColor[0], fillColor[1], fillColor[2], fillColor[3]);
+      arrays.positions &&
+        arrays.positions.push(outerRing[i].x, outerRing[i].y, 0);
+      arrays.colors &&
+        arrays.colors.push(
+          fillColor[0],
+          fillColor[1],
+          fillColor[2],
+          fillColor[3]
+        );
       arrays.uvs && arrays.uvs.push(outerRing[i].x, outerRing[i].y); // world uvs
-      strokeColor && arrays.linePositions && arrays.linePositions.push(
-        outerRing[i].x, outerRing[i].y, 0,
-        outerRing[i+1].x, outerRing[i+1].y, 0);
-      strokeColor && arrays.lineColors && arrays.lineColors.push(
-        strokeColor[0], strokeColor[1], strokeColor[2], strokeColor[3],
-        strokeColor[0], strokeColor[1], strokeColor[2], strokeColor[3]);
+      strokeColor &&
+        arrays.linePositions &&
+        arrays.linePositions.push(
+          outerRing[i].x,
+          outerRing[i].y,
+          0,
+          outerRing[i + 1].x,
+          outerRing[i + 1].y,
+          0
+        );
+      strokeColor &&
+        arrays.lineColors &&
+        arrays.lineColors.push(
+          strokeColor[0],
+          strokeColor[1],
+          strokeColor[2],
+          strokeColor[3],
+          strokeColor[0],
+          strokeColor[1],
+          strokeColor[2],
+          strokeColor[3]
+        );
     }
     for (j = 0; j < holeRings.length; j++) {
       hole = holeRings[j];
       for (i = 0, l = hole.length - 1; i < l; i++) {
         arrays.positions && arrays.positions.push(hole[i].x, hole[i].y, 0);
-        arrays.colors && arrays.colors.push(fillColor[0], fillColor[1], fillColor[2], fillColor[3]);
+        arrays.colors &&
+          arrays.colors.push(
+            fillColor[0],
+            fillColor[1],
+            fillColor[2],
+            fillColor[3]
+          );
         arrays.uvs && arrays.uvs.push(hole[i].x, hole[i].y); // world uvs
-        strokeColor && arrays.linePositions && arrays.linePositions.push(
-          hole[i].x, hole[i].y, 0,
-          hole[i+1].x, hole[i+1].y, 0);
-        strokeColor && arrays.lineColors && arrays.lineColors.push(
-          strokeColor[0], strokeColor[1], strokeColor[2], strokeColor[3],
-          strokeColor[0], strokeColor[1], strokeColor[2], strokeColor[3]);
+        strokeColor &&
+          arrays.linePositions &&
+          arrays.linePositions.push(
+            hole[i].x,
+            hole[i].y,
+            0,
+            hole[i + 1].x,
+            hole[i + 1].y,
+            0
+          );
+        strokeColor &&
+          arrays.lineColors &&
+          arrays.lineColors.push(
+            strokeColor[0],
+            strokeColor[1],
+            strokeColor[2],
+            strokeColor[3],
+            strokeColor[0],
+            strokeColor[1],
+            strokeColor[2],
+            strokeColor[3]
+          );
       }
     }
 
     // triangulate shape to add indices
     const faces = ShapeUtils.triangulateShape(outerRing, holeRings);
     for (i = 0, l = faces.length; i < l; i++) {
-      arrays.indices && arrays.indices.push(
-        faces[i][0] + indexOffset,
-        faces[i][1] + indexOffset,
-        faces[i][2] + indexOffset
-      );
+      arrays.indices &&
+        arrays.indices.push(
+          faces[i][0] + indexOffset,
+          faces[i][1] + indexOffset,
+          faces[i][2] + indexOffset
+        );
     }
-  }
+  };
 
   // loop on ends: create a new polygon with holes everytime
   // the ring is CW
@@ -161,7 +226,9 @@ function renderPolygonGeometry(olGeom, olStyle, arrays) {
       continue;
     }
 
-    ring = flatCoordinates.slice(i === 0 ? 0 : ends[i - 1], ends[i]).reduce(coordReduce, [])
+    ring = flatCoordinates
+      .slice(i === 0 ? 0 : ends[i - 1], ends[i])
+      .reduce(coordReduce, []);
 
     // this is an outer ring: generate the previous polygon and initiate new one
     if (ShapeUtils.isClockWise(ring)) {
@@ -183,43 +250,65 @@ function renderPolygonGeometry(olGeom, olStyle, arrays) {
 // returns an array of meshes
 // arrays can hold: positions, colors
 function renderLinestringGeometry(olGeom, olStyle, arrays) {
-  if (!olStyle || !olStyle.getStroke()) { return; }
+  if (!olStyle || !olStyle.getStroke()) {
+    return;
+  }
 
   const ends = olGeom.getEnds();
   const stride = olGeom.getStride();
   const coordReduce = (acc, curr, i, array) => {
     if ((i - 1) % stride === 0) {
-      acc.push(new Vector3(array[i - stride + 1], array[i - stride + 2], stride > 2 ? array[i - stride + 3] : 0));
+      acc.push(
+        new Vector3(
+          array[i - stride + 1],
+          array[i - stride + 2],
+          stride > 2 ? array[i - stride + 3] : 0
+        )
+      );
     }
     return acc;
-  }
-  const colorMap = (c, i) => c < 3 ? c / 255 : c
+  };
+  const colorMap = (c, i) => (c < 3 ? c / 255 : c);
 
   const flatCoordinates = olGeom.getFlatCoordinates();
 
   if (ends.length === 0) {
-    return null
+    return null;
   }
 
   let line, hole, holes, i;
 
-  const strokeColor = olStyle.getStroke() ?
-    olcolor.asArray(olStyle.getStroke().getColor()).map(colorMap) :
-    null;
+  const strokeColor = olStyle.getStroke()
+    ? olcolor.asArray(olStyle.getStroke().getColor()).map(colorMap)
+    : null;
 
   // generate a new mesh from an outer ring & holes
   const appendArrays = () => {
     // add vertices & colors to arrays (outer ring and holes)
     let i, l;
     for (i = 0, l = line.length - 1; i < l; i++) {
-      arrays.linePositions && arrays.linePositions.push(
-        line[i].x, line[i].y, 0,
-        line[i+1].x, line[i+1].y, 0);
-      arrays.lineColors && arrays.lineColors.push(
-        strokeColor[0], strokeColor[1], strokeColor[2], strokeColor[3],
-        strokeColor[0], strokeColor[1], strokeColor[2], strokeColor[3]);
+      arrays.linePositions &&
+        arrays.linePositions.push(
+          line[i].x,
+          line[i].y,
+          0,
+          line[i + 1].x,
+          line[i + 1].y,
+          0
+        );
+      arrays.lineColors &&
+        arrays.lineColors.push(
+          strokeColor[0],
+          strokeColor[1],
+          strokeColor[2],
+          strokeColor[3],
+          strokeColor[0],
+          strokeColor[1],
+          strokeColor[2],
+          strokeColor[3]
+        );
     }
-  }
+  };
 
   // loop on ends: create a new polygon with holes everytime
   // the ring is CW
@@ -228,7 +317,9 @@ function renderLinestringGeometry(olGeom, olStyle, arrays) {
       continue;
     }
 
-    line = flatCoordinates.slice(i === 0 ? 0 : ends[i - 1], ends[i]).reduce(coordReduce, [])
+    line = flatCoordinates
+      .slice(i === 0 ? 0 : ends[i - 1], ends[i])
+      .reduce(coordReduce, []);
     appendArrays();
   }
 

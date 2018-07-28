@@ -1,25 +1,20 @@
-const webpack = require('webpack');
+const webpack = require("webpack");
 
 module.exports = {
-  entry: './main.js',
+  entry: "./main.js",
   output: {
-    filename: 'bundle.js'
+    filename: "bundle.js"
   },
   watch: true,
   module: {
     rules: [
       {
         test: /\.css$/,
-        use: [
-          {loader: 'style-loader'},
-          {loader: 'css-loader'}
-        ]
+        use: [{ loader: "style-loader" }, { loader: "css-loader" }]
       },
       {
         test: /\.glsl$/,
-        use: [
-          {loader: 'raw-loader'}
-        ]
+        use: [{ loader: "raw-loader" }]
       }
     ]
   },
