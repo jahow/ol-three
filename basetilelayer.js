@@ -53,124 +53,112 @@ Object.assign(BaseTileLayer.prototype, {
   updateTileMesh: function(mesh) {},
 
   update: function() {
-    var target = getCameraTarget();
-    var size = getMapSize();
-    var center = [target.x, target.y];
-    let ratio = size[1] / size[0];
-    let rotation = 0;
-    let resolution = getMaxResolution();
+    // var target = getCameraTarget();
+    // var size = getMapSize();
+    // var center = [target.x, target.y];
+    // let ratio = size[1] / size[0];
+    // let rotation = 0;
+    // let resolution = getMaxResolution();
 
-    var projection = this.source.getProjection();
-    var extent = olextent.getForViewAndSize(center, resolution, rotation, size);
-    var tileGrid = this.source.getTileGrid();
-    var z = tileGrid.getZForResolution(resolution);
-    var tileResolution = tileGrid.getResolution(z);
-    var tilePixelSize = this.source.getTilePixelSize(
-      z,
-      window.devicePixelRatio,
-      projection
-    );
-    var pixelRatio =
-      tilePixelSize[0] /
-      olsize.toSize(tileGrid.getTileSize(z), this.tmpSize)[0];
-    var tilePixelResolution = tileResolution / pixelRatio;
-    var tileGutter =
-      this.source.getTilePixelRatio(pixelRatio) *
-      this.source.getGutter(projection);
-    var tileRange = tileGrid.getTileRangeForExtentAndZ(extent, z);
+    // var projection = this.source.getProjection();
+    // var extent = olextent.getForViewAndSize(center, resolution, rotation, size);
+    // var tileGrid = this.source.getTileGrid();
+    // var z = tileGrid.getZForResolution(resolution);
+    // var tileResolution = tileGrid.getResolution(z);
+    // var tilePixelSize = this.source.getTilePixelSize(
+    //   z,
+    //   window.devicePixelRatio,
+    //   projection
+    // );
+    // var pixelRatio =
+    //   tilePixelSize[0] /
+    //   olsize.toSize(tileGrid.getTileSize(z), this.tmpSize)[0];
+    // var tilePixelResolution = tileResolution / pixelRatio;
+    // var tileGutter =
+    //   this.source.getTilePixelRatio(pixelRatio) *
+    //   this.source.getGutter(projection);
+    // var tileRange = tileGrid.getTileRangeForExtentAndZ(extent, z);
 
     // get a list of tiles to load based on the camera position
-    // var projection = this.source.getProjection();
-    // var tileGrid = this.source.getTileGrid();
+    var projection = this.source.getProjection();
+    var tileGrid = this.source.getTileGrid();
+    var visibleTiles = []; // tiles are stored as [x, y, z] arrays
 
-    var allTilesLoaded = true;
+    var z = tileGrid.getZForResolution(getMaxResolution());
+    var resolution;
+    var minX, maxX, minY, maxY;
+
+    // loop on z values to load tiles on all levels
+    while (z > 0) {
+      // TODO: compute extent & add tiles in circle around the camera nearest point
+      z--;
+    }
 
     // loop on tile range to load missing tiles and generate new meshes
-    if (
-      this.renderedTileRange &&
-      this.renderedTileRange.equals(tileRange) &&
-      this.renderedRevision == this.source.getRevision()
-    ) {
-      // nothing
-    } else {
-      // mark all existing tile meshes as unused (removed later)
-      Object.keys(this.tileMeshes).forEach(key => {
-        if (this.tileMeshes[key]) this.tileMeshes[key].toDelete = true;
-      });
 
-      var tileRangeSize = tileRange.getSize();
-      var origin = tileGrid.getOrigin(z);
-      var minX =
-        origin[0] + tileRange.minX * tilePixelSize[0] * tilePixelResolution;
-      var minY =
-        origin[1] + tileRange.minY * tilePixelSize[1] * tilePixelResolution;
+    // mark all existing tile meshes as unused (removed later)
+    Object.keys(this.tileMeshes).forEach(key => {
+      if (this.tileMeshes[key]) this.tileMeshes[key].toDelete = true;
+    });
 
-      var x, y, texture;
-      var geometry, material, mesh, scene, orthographicCamera;
-      for (x = tileRange.minX; x <= tileRange.maxX; ++x) {
-        for (y = tileRange.minY; y <= tileRange.maxY; ++y) {
-          var tile = this.source.getTile(z, x, y, pixelRatio, projection);
-          var tileKey = tile.getKey();
+    for (var i = 0; i < visibleTiles; i++) {
+      var tile = this.source.getTile(
+        visibleTiles[i][2],
+        visibleTiles[i][0],
+        visibleTiles[i][1],
+        1,
+        projection
+      );
+      var tileKey = tile.getKey();
 
-          if (tile.getState() != TileState.LOADED) {
-            allTilesLoaded = false;
-            tile.load();
-          } else if (
-            tile.getState() == TileState.LOADED &&
-            !this.tileMeshes[tileKey]
-          ) {
-            // handle tiles in tile-pixel coords
-            tile.tileKeys &&
-              tile.tileKeys.forEach(tileKey => {
-                const sourceTile = tile.getTile(tileKey);
-                const tileProjection = sourceTile.getProjection();
-                var sourceTileCoord = sourceTile.tileCoord;
-                var sourceTileExtent = tileGrid.getTileCoordExtent(
-                  sourceTileCoord
-                );
+      if (tile.getState() != TileState.LOADED) {
+        tile.load();
+      } else if (
+        tile.getState() == TileState.LOADED &&
+        !this.tileMeshes[tileKey]
+      ) {
+        // handle tiles in tile-pixel coords
+        tile.tileKeys &&
+          tile.tileKeys.forEach(tileKey => {
+            const sourceTile = tile.getTile(tileKey);
+            const tileProjection = sourceTile.getProjection();
+            var sourceTileCoord = sourceTile.tileCoord;
+            var sourceTileExtent = tileGrid.getTileCoordExtent(sourceTileCoord);
 
-                // handle coords in tile-pixels (ie Mapbox Vector Tiles)
-                if (tileProjection.getUnits() == Units.TILE_PIXELS) {
-                  tileProjection.setWorldExtent(sourceTileExtent);
-                  tileProjection.setExtent(sourceTile.getExtent());
-                }
-              });
+            // handle coords in tile-pixels (ie Mapbox Vector Tiles)
+            if (tileProjection.getUnits() == Units.TILE_PIXELS) {
+              tileProjection.setWorldExtent(sourceTileExtent);
+              tileProjection.setExtent(sourceTile.getExtent());
+            }
+          });
 
-            // mesh generation is added to queue
-            var tileCopy = tile;
-            // uncomment to use job queue
-            // addJobToQueue(function () {
-            this._reprojectTileAndGenerate(tileCopy);
-            // }, this, 1000);
-          }
-
-          if (this.tileMeshes[tileKey]) {
-            this.tileMeshes[tileKey].toDelete = false;
-          }
-        }
+        // mesh generation is added to queue
+        var tileCopy = tile;
+        // uncomment to use job queue
+        // addJobToQueue(function () {
+        this._reprojectTileAndGenerate(tileCopy);
+        // }, this, 1000);
       }
 
-      // loop on meshes
-      Object.keys(this.tileMeshes).forEach(key => {
-        if (!this.tileMeshes[key]) return;
-
-        // remove unused meshes
-        if (this.tileMeshes[key].toDelete) {
-          this.disposeTileMesh(this.tileMeshes[key]);
-          this.rootMesh.remove(this.tileMeshes[key]);
-          this.tileMeshes[key] = null;
-          return;
-        }
-      });
-
-      if (allTilesLoaded) {
-        this.renderedTileRange = tileRange;
-        this.renderedRevision = this.source.getRevision();
-      } else {
-        this.renderedTileRange = null;
-        this.renderedRevision = -1;
+      if (this.tileMeshes[tileKey]) {
+        this.tileMeshes[tileKey].toDelete = false;
       }
     }
+
+    // loop on meshes
+    Object.keys(this.tileMeshes).forEach(key => {
+      if (!this.tileMeshes[key]) return;
+
+      // remove unused meshes
+      if (this.tileMeshes[key].toDelete) {
+        this.disposeTileMesh(this.tileMeshes[key]);
+        this.rootMesh.remove(this.tileMeshes[key]);
+        this.tileMeshes[key] = null;
+        return;
+      }
+    });
+
+    // TODO: reimplement skipping when visible tiles did not change
 
     Object.keys(this.tileMeshes).forEach(key => {
       if (!this.tileMeshes[key]) return;
