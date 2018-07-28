@@ -14,7 +14,7 @@ import { LineSegments } from "three/src/objects/LineSegments";
 import BaseTileLayer from "./basetilelayer";
 
 import { renderFeature, polygonMaterial, lineMaterial } from "./vector";
-import { getResolution } from "./view";
+import { getMaxResolution } from "./view";
 
 var VectorTileLayer = function(olTileSource) {
   BaseTileLayer.call(this, olTileSource);
@@ -41,7 +41,7 @@ Object.assign(VectorTileLayer.prototype, {
     tile.tileKeys.forEach(tileKey => {
       const features = tile.getTile(tileKey).getFeatures();
       features.forEach(feature => {
-        const styles = styleFunction(feature, getResolution());
+        const styles = styleFunction(feature, getMaxResolution());
         styles &&
           renderFeature(
             feature,

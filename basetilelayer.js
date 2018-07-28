@@ -21,7 +21,7 @@ import { Texture } from "three/src/textures/Texture";
 import { WebGLRenderTarget } from "three/src/renderers/WebGLRenderTarget";
 
 import { addJobToQueue } from "./jobqueue";
-import { getResolution, getCameraTarget } from "./view";
+import { getMaxResolution, getCameraTarget } from "./view";
 import { getMapSize } from "./common";
 
 // A tile layer simply generates meshes based on the current view
@@ -58,7 +58,7 @@ Object.assign(BaseTileLayer.prototype, {
     var center = [target.x, target.y];
     let ratio = size[1] / size[0];
     let rotation = 0;
-    let resolution = getResolution();
+    let resolution = getMaxResolution();
 
     var projection = this.source.getProjection();
     var extent = olextent.getForViewAndSize(center, resolution, rotation, size);
@@ -78,6 +78,10 @@ Object.assign(BaseTileLayer.prototype, {
       this.source.getTilePixelRatio(pixelRatio) *
       this.source.getGutter(projection);
     var tileRange = tileGrid.getTileRangeForExtentAndZ(extent, z);
+
+    // get a list of tiles to load based on the camera position
+    // var projection = this.source.getProjection();
+    // var tileGrid = this.source.getTileGrid();
 
     var allTilesLoaded = true;
 
