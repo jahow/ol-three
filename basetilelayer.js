@@ -21,7 +21,11 @@ import { Texture } from "three/src/textures/Texture";
 import { WebGLRenderTarget } from "three/src/renderers/WebGLRenderTarget";
 
 import { addJobToQueue } from "./jobqueue";
-import { getMaxResolution, getCameraTarget } from "./view";
+import {
+  getMaxResolution,
+  getActiveCamera,
+  getDistanceFromResolution
+} from "./view";
 import { getMapSize } from "./common";
 
 // A tile layer simply generates meshes based on the current view
@@ -53,44 +57,38 @@ Object.assign(BaseTileLayer.prototype, {
   updateTileMesh: function(mesh) {},
 
   update: function() {
-    // var target = getCameraTarget();
-    // var size = getMapSize();
-    // var center = [target.x, target.y];
-    // let ratio = size[1] / size[0];
-    // let rotation = 0;
-    // let resolution = getMaxResolution();
-
-    // var projection = this.source.getProjection();
-    // var extent = olextent.getForViewAndSize(center, resolution, rotation, size);
-    // var tileGrid = this.source.getTileGrid();
-    // var z = tileGrid.getZForResolution(resolution);
-    // var tileResolution = tileGrid.getResolution(z);
-    // var tilePixelSize = this.source.getTilePixelSize(
-    //   z,
-    //   window.devicePixelRatio,
-    //   projection
-    // );
-    // var pixelRatio =
-    //   tilePixelSize[0] /
-    //   olsize.toSize(tileGrid.getTileSize(z), this.tmpSize)[0];
-    // var tilePixelResolution = tileResolution / pixelRatio;
-    // var tileGutter =
-    //   this.source.getTilePixelRatio(pixelRatio) *
-    //   this.source.getGutter(projection);
-    // var tileRange = tileGrid.getTileRangeForExtentAndZ(extent, z);
-
     // get a list of tiles to load based on the camera position
     var projection = this.source.getProjection();
     var tileGrid = this.source.getTileGrid();
     var visibleTiles = []; // tiles are stored as [x, y, z] arrays
 
     var z = tileGrid.getZForResolution(getMaxResolution());
-    var resolution;
-    var minX, maxX, minY, maxY;
+    var zDistance;
+    var center = [getActiveCamera().position.x, getActiveCamera().position.y];
+    var alpha, radius, tileRange;
+    var x, y;
 
     // loop on z values to load tiles on all levels
-    while (z > 0) {
-      // TODO: compute extent & add tiles in circle around the camera nearest point
+    while (z >= 0) {
+      zDistance = getDistanceFromResolution(tileGrid.getResolution(z));
+      alpha = Math.acos(getActiveCamera().position.z / zDistance);
+      radius = Math.sin(alpha) * zDistance;
+      tileRange = tileGrid.getTileRangeForExtentAndZ(
+        [
+          center[0] - radius,
+          center[1] - radius,
+          center[0] + radius,
+          center[1] + radius
+        ],
+        z
+      );
+
+      for (x = tileRange.minX; x <= tileRange.maxX; x++) {
+        for (y = tileRange.minY; y <= tileRange.maxY; y++) {
+          visibleTiles.push([x, y, z]);
+        }
+      }
+
       z--;
     }
 
@@ -101,7 +99,7 @@ Object.assign(BaseTileLayer.prototype, {
       if (this.tileMeshes[key]) this.tileMeshes[key].toDelete = true;
     });
 
-    for (var i = 0; i < visibleTiles; i++) {
+    for (var i = 0; i < visibleTiles.length; i++) {
       var tile = this.source.getTile(
         visibleTiles[i][2],
         visibleTiles[i][0],

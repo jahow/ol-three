@@ -26,3 +26,11 @@ export function getMaxResolution() {
 	let scale = dist * Math.tan((activeCamera.fov / 360) * Math.PI) * 2;
 	return scale / getMapSize()[1];
 }
+
+// TODO: this should simply be the camera distance to the map with a factor
+export function getDistanceFromResolution(resolution) {
+	let dist =
+		(resolution * getMapSize()[1]) /
+		(Math.tan((activeCamera.fov / 360) * Math.PI) * 2);
+	return dist;
+}
