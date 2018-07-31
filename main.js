@@ -19,7 +19,6 @@ import { Matrix4 } from "three/src/math/Matrix4";
 import { PerspectiveCamera } from "three/src/cameras/PerspectiveCamera";
 import { RawShaderMaterial } from "three/src/materials/RawShaderMaterial";
 import { Scene } from "three/src/scenes/Scene";
-import { WebGLRenderer } from "three/src/renderers/WebGLRenderer";
 
 import { Shape } from "three/src/extras/core/Shape";
 import { ShapeBufferGeometry } from "three/src/geometries/ShapeGeometry";
@@ -36,6 +35,7 @@ import { GEOM_KML } from "./test_geom";
 import { addJobToQueue, updateJobQueue } from "./jobqueue";
 import { setActiveCamera, setCameraTarget } from "./view";
 import { createMapboxStreetsV6Style } from "./mapbox-streets-v6-style";
+import { getRenderer } from "./common";
 
 //
 // main
@@ -81,7 +81,7 @@ scene.add(vtLayer.rootMesh);
 
 // renderer
 
-var renderer = new WebGLRenderer();
+var renderer = getRenderer();
 renderer.setSize(mapWidth, mapHeight);
 renderer.setClearColor(new Color(0xf8f4f0));
 renderer.sortObjects = false;

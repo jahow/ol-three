@@ -56,7 +56,13 @@ Object.assign(BaseTileLayer.prototype, {
 
   updateTileMesh: function(mesh) {},
 
+  preUpdate: function() {},
+
+  postUpdate: function() {},
+
   update: function() {
+    this.preUpdate();
+
     // get a list of tiles to load based on the camera position
     var projection = this.source.getProjection();
     var tileGrid = this.source.getTileGrid();
@@ -163,6 +169,8 @@ Object.assign(BaseTileLayer.prototype, {
 
       this.updateTileMesh(this.tileMeshes[key]);
     });
+
+    this.postUpdate();
   },
 
   _reprojectTileAndGenerate(tile) {

@@ -34,21 +34,14 @@ export const polygonMaterial = new ShaderMaterial({
   vertexShader: polygonVS,
   fragmentShader: polygonFS,
   transparent: true,
-  depthTest: false
+  depthTest: true
 });
 
 export const lineMaterial = new LineBasicMaterial({
   color: 0x2222ff,
   linewidth: 1,
   transparent: true,
-  depthTest: false
-});
-
-const holeMaterial = new MeshBasicMaterial({
-  color: 0xff2222,
-  opacity: 0.4,
-  transparent: true,
-  depthTest: false
+  depthTest: true
 });
 
 export function renderFeature(olFeature, olStyles, arrays, proj1, proj2) {
