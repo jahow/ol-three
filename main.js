@@ -46,8 +46,8 @@ var mapWidth = mapEl.clientWidth;
 var mapHeight = mapEl.clientHeight;
 var mapSize = [mapWidth, mapHeight];
 
-var osmSource = new OSM();
-var osmLayer = new RasterTileLayer(osmSource);
+// var osmSource = new OSM();
+// var osmLayer = new RasterTileLayer(osmSource);
 
 // vt layer
 var key = "pk.eyJ1IjoiYWhvY2V2YXIiLCJhIjoiRk1kMWZaSSJ9.E5BkluenyWQMsBLsuByrmg";
@@ -84,10 +84,10 @@ scene.add(vtLayer.rootMesh);
 var renderer = getRenderer();
 renderer.setSize(mapWidth, mapHeight);
 renderer.setClearColor(new Color(0xf8f4f0));
-renderer.sortObjects = false;
+// renderer.sortObjects = false;
 mapEl.appendChild(renderer.domElement);
 
-var projectionExtent = osmSource.getProjection().getExtent();
+// var projectionExtent = osmSource.getProjection().getExtent();
 var aspectRatio = mapWidth / mapHeight;
 
 var initialCenter = [595641.3047094788, 5626334.968589892];
@@ -114,7 +114,7 @@ setCameraTarget(controls.target);
   controls.update();
 
   renderer.clear();
-  osmLayer.update();
+  // osmLayer.update();
   vtLayer.update();
 
   updateJobQueue();
