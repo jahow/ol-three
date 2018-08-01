@@ -34,7 +34,7 @@ var RasterTileLayer = function(olTileSource) {
 RasterTileLayer.prototype = Object.create(BaseTileLayer.prototype);
 
 Object.assign(RasterTileLayer.prototype, {
-  generateTileMesh: function(tile, isCached, projection, tileExtent) {
+  generateTileMesh: function(tile, isCached, tileExtent) {
     const material = new MeshBasicMaterial({
       color: 0xffffff,
       transparent: true

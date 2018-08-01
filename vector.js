@@ -12,8 +12,6 @@ import { Geometry } from "three/src/core/Geometry";
 import { BufferGeometry } from "three/src/core/BufferGeometry";
 import { Mesh } from "three/src/objects/Mesh";
 import { Line } from "three/src/objects/Line";
-import { MeshBasicMaterial } from "three/src/materials/MeshBasicMaterial";
-import { LineBasicMaterial } from "three/src/materials/LineBasicMaterial";
 import { Vector2 } from "three/src/math/Vector2";
 import { Vector3 } from "three/src/math/Vector3";
 import { ShapeUtils } from "three/src/extras/ShapeUtils";
@@ -24,25 +22,6 @@ import { ShaderMaterial } from "three/src/materials/ShaderMaterial";
 import { Color } from "three/src/math/Color";
 
 import { DoubleSide } from "three/src/Three";
-
-import polygonVS from "./polygonVS.glsl";
-import polygonFS from "./polygonFS.glsl";
-
-// const material = new MeshBasicMaterial( { color: 0x2222ff, opacity: 0.4, transparent: true, depthTest: false } );
-export const polygonMaterial = new ShaderMaterial({
-  uniforms: {},
-  vertexShader: polygonVS,
-  fragmentShader: polygonFS,
-  transparent: true,
-  depthTest: true
-});
-
-export const lineMaterial = new LineBasicMaterial({
-  color: 0x2222ff,
-  linewidth: 1,
-  transparent: true,
-  depthTest: true
-});
 
 export function renderFeature(olFeature, olStyles, arrays, proj1, proj2) {
   const olGeom = olFeature.getGeometry();
@@ -224,7 +203,8 @@ function renderPolygonGeometry(olGeom, olStyle, arrays) {
       .reduce(coordReduce, []);
 
     // this is an outer ring: generate the previous polygon and initiate new one
-    if (ShapeUtils.isClockWise(ring)) {
+    // TODO: USE A PARAMETER FOR THIS
+    if (!ShapeUtils.isClockWise(ring)) {
       if (outerRing) appendArrays();
       outerRing = ring;
       holeRings = [];

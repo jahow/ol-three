@@ -137,10 +137,10 @@ Object.assign(BaseTileLayer.prototype, {
           });
 
         // mesh generation is added to queue
-        var tileCopy = tile;
+        // var tileCopy = tile;
         // uncomment to use job queue
         // addJobToQueue(function () {
-        this._reprojectTileAndGenerate(tileCopy);
+        this._reprojectTileAndGenerate(tile);
         // }, this, 1000);
       }
 
@@ -173,31 +173,34 @@ Object.assign(BaseTileLayer.prototype, {
     this.postUpdate();
   },
 
-  _reprojectTileAndGenerate(tile) {
-    var projection = this.source.getProjection();
+  _reprojectTileAndGenerate(olTile) {
+    // var projection = this.source.getProjection();
     var tileGrid = this.source.getTileGrid();
-    var tileKey = tile.getKey();
+    var tileKey = olTile.getKey();
     var tileExtent = tileGrid.getTileCoordExtent(
-      tile.tileCoord,
+      olTile.tileCoord,
       this.tmpExtent
     );
 
-    this.tileMeshes[tileKey] = this.generateTileMesh(
-      tile,
+    const mesh = this.generateTileMesh(
+      olTile,
       this.tileMeshes[tileKey] === null,
-      projection,
+      // projection,
       tileExtent
     );
-    this.rootMesh.add(this.tileMeshes[tileKey]);
+    if (mesh) {
+      this.rootMesh.add(mesh);
+      this.tileMeshes[tileKey] = mesh;
+    }
 
     // change tile projection (as tile geoms should have been projected by now)
-    tile.tileKeys &&
-      tile.tileKeys.forEach(tileKey => {
-        const sourceTile = tile.getTile(tileKey);
-        if (!olproj.equivalent(projection, sourceTile.getProjection())) {
-          sourceTile.setProjection(projection);
-        }
-      });
+    // olTile.tileKeys &&
+    //   olTile.tileKeys.forEach(tileKey => {
+    //     const sourceTile = olTile.getTile(tileKey);
+    //     if (!olproj.equivalent(projection, sourceTile.getProjection())) {
+    //       sourceTile.setProjection(projection);
+    //     }
+    //   });
   },
 
   getStyleFunction() {
