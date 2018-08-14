@@ -1,30 +1,32 @@
 // OpenLayers imports
-import olextent from "ol/extent";
-import olmath from "ol/math";
-import olproj from "ol/proj";
-import Projection from "ol/proj/projection";
-import olsize from "ol/size";
-import TileState from "ol/tilestate";
+import olextent from 'ol/extent';
+import olmath from 'ol/math';
+import olproj from 'ol/proj';
+import Projection from 'ol/proj/projection';
+import olsize from 'ol/size';
+import TileState from 'ol/tilestate';
 
 // Three.js imports
-import { Scene } from "three/src/scenes/Scene";
-import { WebGLRenderTarget } from "three/src/renderers/WebGLRenderTarget";
-import { Mesh } from "three/src/objects/Mesh";
-import { BufferGeometry } from "three/src/core/BufferGeometry";
-import { Float32BufferAttribute } from "three/src/core/BufferAttribute";
-import { LineSegments } from "three/src/objects/LineSegments";
-import { ShaderMaterial } from "three/src/materials/ShaderMaterial";
-import { LineBasicMaterial } from "three/src/materials/LineBasicMaterial";
+import { Scene } from 'three/src/scenes/Scene';
+import { WebGLRenderTarget } from 'three/src/renderers/WebGLRenderTarget';
+import { Mesh } from 'three/src/objects/Mesh';
+import { BufferGeometry } from 'three/src/core/BufferGeometry';
+import { Float32BufferAttribute } from 'three/src/core/BufferAttribute';
+import { LineSegments } from 'three/src/objects/LineSegments';
+import { ShaderMaterial } from 'three/src/materials/ShaderMaterial';
+import { LineBasicMaterial } from 'three/src/materials/LineBasicMaterial';
 
-import BaseTileLayer from "./basetilelayer";
+import BaseTileLayer from './basetilelayer';
 
-import { renderFeature } from "./vector";
-import { getMaxResolution, getActiveCamera } from "./view";
-import { getMapSize, getRenderer } from "./common";
+import { renderFeature } from './vector';
+import { getMaxResolution, getActiveCamera } from './view';
+import { getMapSize, getRenderer } from './common';
 
-import polygonVS from "./polygon-vtVS.glsl";
-import polygonFS from "./polygon-vtFS.glsl";
-import polygonMaskFS from "./polygon-maskFS.glsl";
+import polygonVS from './polygon-vtVS.glsl';
+import polygonFS from './polygon-vtFS.glsl';
+import polygonMaskFS from './polygon-maskFS.glsl';
+import lineVS from './line-vtVS.glsl';
+import lineFS from './line-vtFS.glsl';
 
 const polygonMaterial = new ShaderMaterial({
   uniforms: {},
@@ -42,16 +44,16 @@ const polygonMaskMaterial = new ShaderMaterial({
   depthTest: false
 });
 
-const lineMaterial = new LineBasicMaterial({
-  color: 0x2222ff,
-  opacity: 0.1,
-  linewidth: 1,
+const lineMaterial = new ShaderMaterial({
+  uniforms: {},
+  vertexShader: lineVS,
+  fragmentShader: lineFS,
   transparent: true,
-  depthTest: true
+  depthTest: false
 });
 
 // tiles are projected to a mvt style proj (0-4096 relative to origin of tile)
-const tileRenderProjCode = "EPSG:3857";
+const tileRenderProjCode = 'EPSG:3857';
 const tileRenderExtentSize = 4096;
 
 var VectorTileLayer = function(olTileSource) {
@@ -67,6 +69,13 @@ var VectorTileLayer = function(olTileSource) {
   // TODO: make this a property of the layer, or update uniform to handle several layers
   polygonMaterial.uniforms.uMaskTexture = {
     value: this.maskRenderTarget.texture
+  };
+  lineMaterial.uniforms.uMaskTexture = {
+    value: this.maskRenderTarget.texture
+  };
+
+  lineMaterial.uniforms.resolution = {
+    value: 0
   };
 };
 
@@ -84,8 +93,10 @@ Object.assign(VectorTileLayer.prototype, {
       colors: [],
       indices: [],
       linePositions: [],
-      lineColors: [],
-      lineEnds: []
+      lineIndices: [],
+      lineNeighbours: [],
+      lineParams: [],
+      lineColors: []
     };
 
     const styleFunction = this.getStyleFunction();
@@ -93,8 +104,8 @@ Object.assign(VectorTileLayer.prototype, {
       code: tileRenderProjCode,
       extent: [0, 0, tileRenderExtentSize, tileRenderExtentSize],
       worldExtent: tileExtent,
-      units: "tile-pixels",
-      axisOrientation: "enu"
+      units: 'tile-pixels',
+      axisOrientation: 'enu'
     });
 
     tile.tileKeys.forEach(tileKey => {
@@ -119,16 +130,21 @@ Object.assign(VectorTileLayer.prototype, {
         arrays.positions[i] = z;
       }
     }
+    for (let i = 0; i < arrays.linePositions.length; i++) {
+      if ((i - 2) % 3 === 0) {
+        arrays.linePositions[i] = z;
+      }
+    }
 
     // use arrays to generate a geometry
     const geom = new BufferGeometry();
     geom.setIndex(arrays.indices);
     geom.addAttribute(
-      "position",
+      'position',
       new Float32BufferAttribute(arrays.positions, 3)
     );
-    geom.addAttribute("color", new Float32BufferAttribute(arrays.colors, 4));
-    geom.addAttribute("uv", new Float32BufferAttribute(arrays.uvs, 2));
+    geom.addAttribute('color', new Float32BufferAttribute(arrays.colors, 4));
+    geom.addAttribute('uv', new Float32BufferAttribute(arrays.uvs, 2));
 
     const rootMesh = new Mesh(geom, polygonMaterial);
 
@@ -140,24 +156,37 @@ Object.assign(VectorTileLayer.prototype, {
     rootMesh.scale.y = -sizeY / tileRenderExtentSize;
     rootMesh.position.x = worldExtent[0];
     rootMesh.position.y = worldExtent[3];
+    rootMesh.renderOrder = 0;
 
     // generate line mesh
+    // TODO: better handle these attributes...
     const lineGeom = new BufferGeometry();
+    lineGeom.setIndex(arrays.lineIndices);
     lineGeom.addAttribute(
-      "position",
+      'position',
       new Float32BufferAttribute(arrays.linePositions, 3)
     );
     lineGeom.addAttribute(
-      "color",
+      'neighbours',
+      new Float32BufferAttribute(arrays.lineNeighbours, 4)
+    );
+    lineGeom.addAttribute(
+      'params',
+      new Float32BufferAttribute(arrays.lineParams, 4)
+    );
+    lineGeom.addAttribute(
+      'color',
       new Float32BufferAttribute(arrays.lineColors, 4)
     );
-    rootMesh.add(new LineSegments(lineGeom, lineMaterial));
+    const lineMesh = new Mesh(lineGeom, lineMaterial);
+    lineMesh.renderOrder = 1;
+    rootMesh.add(lineMesh);
 
     // add a mesh with the same geom on the mask scene
     const maskGeom = new BufferGeometry();
     maskGeom.setIndex([0, 1, 2, 0, 2, 3]);
     maskGeom.addAttribute(
-      "position",
+      'position',
       new Float32BufferAttribute(
         [
           worldExtent[0],
@@ -192,7 +221,11 @@ Object.assign(VectorTileLayer.prototype, {
 
   updateTileMesh: function(mesh) {},
 
-  preUpdate: function() {},
+  preUpdate: function() {
+    lineMaterial.uniforms.resolution = {
+      value: getMaxResolution()
+    };
+  },
 
   postUpdate: function() {
     getRenderer().clear(this.maskScene, this.maskRenderTarget);

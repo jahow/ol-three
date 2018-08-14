@@ -5,7 +5,7 @@ varying float vTileZoom;
 attribute vec4 color;
 
 void main(void) {
-  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(position.xy, 0.0, 1.0);
   vScreenUV = vec2(
     gl_Position.x / gl_Position.z * 0.5 + 0.5,
     gl_Position.y / gl_Position.z * 0.5 + 0.5

@@ -1,32 +1,32 @@
 // OpenLayers imports
-import olextent from "ol/extent";
-import olmath from "ol/math";
-import olproj from "ol/proj";
-import olsize from "ol/size";
-import TileState from "ol/tilestate";
-import Units from "ol/proj/units";
+import olextent from 'ol/extent';
+import olmath from 'ol/math';
+import olproj from 'ol/proj';
+import olsize from 'ol/size';
+import TileState from 'ol/tilestate';
+import Units from 'ol/proj/units';
 
 // Three.js imports
-import { BufferGeometry } from "three/src/core/BufferGeometry";
-import { PlaneGeometry } from "three/src/geometries/PlaneGeometry";
-import { InterleavedBuffer } from "three/src/core/InterleavedBuffer";
-import { InterleavedBufferAttribute } from "three/src/core/InterleavedBufferAttribute";
-import { Matrix4 } from "three/src/math/Matrix4";
-import { Mesh } from "three/src/objects/Mesh";
-import { OrthographicCamera } from "three/src/cameras/OrthographicCamera";
-import { RawShaderMaterial } from "three/src/materials/RawShaderMaterial";
-import { MeshBasicMaterial } from "three/src/materials/MeshBasicMaterial";
-import { Scene } from "three/src/scenes/Scene";
-import { Texture } from "three/src/textures/Texture";
-import { WebGLRenderTarget } from "three/src/renderers/WebGLRenderTarget";
+import { BufferGeometry } from 'three/src/core/BufferGeometry';
+import { PlaneGeometry } from 'three/src/geometries/PlaneGeometry';
+import { InterleavedBuffer } from 'three/src/core/InterleavedBuffer';
+import { InterleavedBufferAttribute } from 'three/src/core/InterleavedBufferAttribute';
+import { Matrix4 } from 'three/src/math/Matrix4';
+import { Mesh } from 'three/src/objects/Mesh';
+import { OrthographicCamera } from 'three/src/cameras/OrthographicCamera';
+import { RawShaderMaterial } from 'three/src/materials/RawShaderMaterial';
+import { MeshBasicMaterial } from 'three/src/materials/MeshBasicMaterial';
+import { Scene } from 'three/src/scenes/Scene';
+import { Texture } from 'three/src/textures/Texture';
+import { WebGLRenderTarget } from 'three/src/renderers/WebGLRenderTarget';
 
-import { addJobToQueue } from "./jobqueue";
+import { addJobToQueue } from './jobqueue';
 import {
   getMaxResolution,
   getActiveCamera,
   getDistanceFromResolution
-} from "./view";
-import { getMapSize } from "./common";
+} from './view';
+import { getMapSize } from './common';
 
 // A tile layer simply generates meshes based on the current view
 // Implementations will have to redefine the generateTileMesh method
@@ -77,17 +77,23 @@ Object.assign(BaseTileLayer.prototype, {
     // loop on z values to load tiles on all levels
     while (z >= 0) {
       zDistance = getDistanceFromResolution(tileGrid.getResolution(z));
-      alpha = Math.acos(getActiveCamera().position.z / zDistance);
-      radius = Math.sin(alpha) * zDistance;
-      tileRange = tileGrid.getTileRangeForExtentAndZ(
-        [
-          center[0] - radius,
-          center[1] - radius,
-          center[0] + radius,
-          center[1] + radius
-        ],
-        z
-      );
+
+      // todo: improve this to always render the broader zoom level
+      if (z === 1) {
+        tileRange = tileGrid.getFullTileRange(z);
+      } else {
+        alpha = Math.acos(getActiveCamera().position.z / zDistance);
+        radius = Math.sin(alpha) * zDistance;
+        tileRange = tileGrid.getTileRangeForExtentAndZ(
+          [
+            center[0] - radius,
+            center[1] - radius,
+            center[0] + radius,
+            center[1] + radius
+          ],
+          z
+        );
+      }
 
       for (x = tileRange.minX; x <= tileRange.maxX; x++) {
         for (y = tileRange.minY; y <= tileRange.maxY; y++) {
