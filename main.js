@@ -37,6 +37,8 @@ import { addJobToQueue, updateJobQueue } from './jobqueue';
 import { setActiveCamera, setCameraTarget } from './view';
 import { createMapboxStreetsV6Style } from './mapbox-streets-v6-style';
 import { getRenderer } from './common';
+import Stats from './lib/stats';
+import { RendererStats } from './lib/rendererstats';
 
 //
 // main
@@ -110,8 +112,21 @@ controls.target.z = 0;
 controls.zoomSpeed = 3;
 setCameraTarget(controls.target);
 
+// stats
+var stats = new Stats();
+stats.showPanel(0);
+document.body.appendChild(stats.dom);
+
+var rendererStats = new RendererStats();
+rendererStats.domElement.style.position = 'absolute';
+rendererStats.domElement.style.left = '0px';
+rendererStats.domElement.style.bottom = '0px';
+document.body.appendChild(rendererStats.domElement);
+
 (function animate() {
   requestAnimationFrame(animate);
+  stats.begin();
+
   controls.update();
 
   renderer.clear();
@@ -121,4 +136,7 @@ setCameraTarget(controls.target);
   updateJobQueue();
 
   renderer.render(scene, camera, undefined);
+
+  stats.end();
+  rendererStats.update(renderer);
 })();

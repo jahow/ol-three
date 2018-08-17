@@ -12,9 +12,7 @@ import { WebGLRenderTarget } from 'three/src/renderers/WebGLRenderTarget';
 import { Mesh } from 'three/src/objects/Mesh';
 import { BufferGeometry } from 'three/src/core/BufferGeometry';
 import { Float32BufferAttribute } from 'three/src/core/BufferAttribute';
-import { LineSegments } from 'three/src/objects/LineSegments';
 import { ShaderMaterial } from 'three/src/materials/ShaderMaterial';
-import { LineBasicMaterial } from 'three/src/materials/LineBasicMaterial';
 
 import BaseTileLayer from './basetilelayer';
 
@@ -180,6 +178,7 @@ Object.assign(VectorTileLayer.prototype, {
     );
     const lineMesh = new Mesh(lineGeom, lineMaterial);
     lineMesh.renderOrder = 1;
+    rootMesh._lineMesh = lineMesh;
     rootMesh.add(lineMesh);
 
     // add a mesh with the same geom on the mask scene
@@ -214,7 +213,14 @@ Object.assign(VectorTileLayer.prototype, {
   },
 
   disposeTileMesh: function(mesh) {
+    if (mesh._lineMesh && mesh._lineMesh.geometry) {
+      mesh._lineMesh.geometry.dispose();
+    }
+    if (mesh.geometry) {
+      mesh.geometry.dispose();
+    }
     if (mesh._maskMesh) {
+      mesh._maskMesh.geometry.dispose();
       this.maskScene.remove(mesh._maskMesh);
     }
   },
