@@ -19,6 +19,7 @@ import BaseTileLayer from './basetilelayer';
 import { renderFeature } from './vector';
 import { getMaxResolution, getCenterResolution, getActiveCamera } from './view';
 import { getMapSize, getRenderer } from './common';
+import { PolygonGeometry, LineGeometry } from './utils/meshes.geometry';
 
 import polygonVS from './polygon-vtVS.glsl';
 import polygonFS from './polygon-vtFS.glsl';
@@ -86,16 +87,22 @@ Object.assign(VectorTileLayer.prototype, {
     }
 
     // generate arrays for colors, positions
-    const arrays = {
-      positions: [],
-      colors: [],
-      indices: [],
-      linePositions: [],
-      lineIndices: [],
-      lineNeighbours: [],
-      lineParams: [],
-      lineColors: []
-    };
+    // const arrays = {
+    //   positions: [],
+    //   colors: [],
+    //   indices: [],
+    //   linePositions: [],
+    //   lineIndices: [],
+    //   lineNeighbours: [],
+    //   lineParams: [],
+    //   lineColors: []
+    // };
+    const z = tile.getTileCoord()[0];
+
+    const polyGeom = new PolygonGeometry();
+    const lineGeom = new LineGeometry({
+      baseZ: z
+    });
 
     const styleFunction = this.getStyleFunction();
     const tileRenderProj = new Projection({
@@ -114,35 +121,29 @@ Object.assign(VectorTileLayer.prototype, {
       features.forEach(feature => {
         const styles = styleFunction(feature, getMaxResolution());
         styles &&
-          renderFeature(feature, styles, arrays, tileProj, tileRenderProj);
+          renderFeature(
+            feature,
+            styles,
+            polyGeom,
+            lineGeom,
+            tileProj,
+            tileRenderProj
+          );
       });
 
       // save new projection on tile
       sourceTile.setProjection(tileRenderProj);
     });
 
-    // change z component of polygons
-    const z = tile.getTileCoord()[0];
-    for (let i = 0; i < arrays.positions.length; i++) {
-      if ((i - 2) % 3 === 0) {
-        arrays.positions[i] = z;
-      }
-    }
-    for (let i = 0; i < arrays.linePositions.length; i++) {
-      if ((i - 2) % 3 === 0) {
-        arrays.linePositions[i] = z;
-      }
-    }
-
     // use arrays to generate a geometry
     const geom = new BufferGeometry();
-    geom.setIndex(arrays.indices);
-    geom.addAttribute(
-      'position',
-      new Float32BufferAttribute(arrays.positions, 3)
-    );
-    geom.addAttribute('color', new Float32BufferAttribute(arrays.colors, 4));
-    geom.addAttribute('uv', new Float32BufferAttribute(arrays.uvs, 2));
+    // geom.setIndex(arrays.indices);
+    // geom.addAttribute(
+    //   'position',
+    //   new Float32BufferAttribute(arrays.positions, 3)
+    // );
+    // geom.addAttribute('color', new Float32BufferAttribute(arrays.colors, 4));
+    // geom.addAttribute('uv', new Float32BufferAttribute(arrays.uvs, 2));
 
     const rootMesh = new Mesh(geom, polygonMaterial);
 
@@ -154,32 +155,14 @@ Object.assign(VectorTileLayer.prototype, {
     rootMesh.scale.y = -sizeY / tileRenderExtentSize;
     rootMesh.position.x = worldExtent[0];
     rootMesh.position.y = worldExtent[3];
-    rootMesh.renderOrder = 0;
 
     // generate line mesh
-    // TODO: better handle these attributes...
-    const lineGeom = new BufferGeometry();
-    lineGeom.setIndex(arrays.lineIndices);
-    lineGeom.addAttribute(
-      'position',
-      new Float32BufferAttribute(arrays.linePositions, 3)
-    );
-    lineGeom.addAttribute(
-      'neighbours',
-      new Float32BufferAttribute(arrays.lineNeighbours, 4)
-    );
-    lineGeom.addAttribute(
-      'params',
-      new Float32BufferAttribute(arrays.lineParams, 4)
-    );
-    lineGeom.addAttribute(
-      'color',
-      new Float32BufferAttribute(arrays.lineColors, 4)
-    );
-    const lineMesh = new Mesh(lineGeom, lineMaterial);
-    lineMesh.renderOrder = 1;
-    rootMesh._lineMesh = lineMesh;
-    rootMesh.add(lineMesh);
+    if (lineGeom.hasGeometry()) {
+      lineGeom.commit();
+      const lineMesh = new Mesh(lineGeom, lineMaterial);
+      rootMesh._lineMesh = lineMesh;
+      rootMesh.add(lineMesh);
+    }
 
     // add a mesh with the same geom on the mask scene
     const maskGeom = new BufferGeometry();
@@ -225,7 +208,11 @@ Object.assign(VectorTileLayer.prototype, {
     }
   },
 
-  updateTileMesh: function(mesh) {},
+  updateTileMesh: function(mesh) {
+    if (mesh._lineMesh) {
+      mesh._lineMesh.renderOrder = mesh._lineMesh.renderOrder + 1;
+    }
+  },
 
   preUpdate: function() {
     lineMaterial.uniforms.resolution = {

@@ -2,28 +2,14 @@ import GeometryType from 'ol/geom/geometrytype';
 import olproj from 'ol/proj';
 import olcolor from 'ol/color';
 
-import { Shape } from 'three/src/extras/core/Shape';
-import { Path } from 'three/src/extras/core/Path';
-import {
-  ShapeGeometry,
-  ShapeBufferGeometry
-} from 'three/src/geometries/ShapeGeometry';
-import { Geometry } from 'three/src/core/Geometry';
-import { BufferGeometry } from 'three/src/core/BufferGeometry';
-import { Mesh } from 'three/src/objects/Mesh';
-import { Line } from 'three/src/objects/Line';
-import { Vector2 } from 'three/src/math/Vector2';
-import { Vector3 } from 'three/src/math/Vector3';
-import { ShapeUtils } from 'three/src/extras/ShapeUtils';
-import { InterleavedBuffer } from 'three/src/core/InterleavedBuffer';
-import { InterleavedBufferAttribute } from 'three/src/core/InterleavedBufferAttribute';
-import { Matrix4 } from 'three/src/math/Matrix4';
-import { ShaderMaterial } from 'three/src/materials/ShaderMaterial';
-import { Color } from 'three/src/math/Color';
-
-import { DoubleSide } from 'three/src/Three';
-
-export function renderFeature(olFeature, olStyles, arrays, proj1, proj2) {
+export function renderFeature(
+  olFeature,
+  olStyles,
+  polyGeom,
+  lineGeom,
+  proj1,
+  proj2
+) {
   const olGeom = olFeature.getGeometry();
 
   if (!olGeom) {
@@ -39,7 +25,7 @@ export function renderFeature(olFeature, olStyles, arrays, proj1, proj2) {
     case GeometryType.LINE_STRING:
     case GeometryType.MULTI_LINE_STRING:
       return olStyles.forEach(style =>
-        renderLinestringGeometry(olGeom, style, arrays)
+        renderLinestringGeometry(olGeom, style, lineGeom)
       );
       break;
     case GeometryType.LINEAR_RING:
@@ -54,7 +40,7 @@ export function renderFeature(olFeature, olStyles, arrays, proj1, proj2) {
       break;
     case GeometryType.POLYGON:
       return olStyles.forEach(style =>
-        renderPolygonGeometry(olGeom, style, arrays)
+        renderPolygonGeometry(olGeom, style, polyGeom, lineGeom)
       );
       break;
   }
@@ -67,7 +53,7 @@ function renderPolygonGeometry(olGeom, olStyle, arrays) {
   if (!olStyle) {
     return;
   }
-
+  /*
   const ends = olGeom.getEnds();
   const stride = olGeom.getStride();
   const coordReduce = (acc, curr, i, array) => {
@@ -292,142 +278,50 @@ function renderPolygonGeometry(olGeom, olStyle, arrays) {
 
   // generate the last pending polygon
   if (outerRing) appendArrays();
+  */
 }
 
 // returns an array of meshes
 // arrays can hold: positions, colors
-function renderLinestringGeometry(olGeom, olStyle, arrays) {
+function renderLinestringGeometry(olGeom, olStyle, lineGeom) {
   if (!olStyle || !olStyle.getStroke()) {
     return;
   }
 
   const ends = olGeom.getEnds();
-  const stride = olGeom.getStride();
-  const coordReduce = (acc, curr, i, array) => {
-    if ((i - 1) % stride === 0) {
-      acc.push(
-        new Vector3(
-          array[i - stride + 1],
-          array[i - stride + 2],
-          stride > 2 ? array[i - stride + 3] : 0
-        )
-      );
-    }
-    return acc;
-  };
-  const colorMap = (c, i) => (i < 3 ? c / 255 : c);
-
-  const flatCoordinates = olGeom.getFlatCoordinates();
-
   if (ends.length === 0) {
     return null;
   }
 
-  const strokeColor = olcolor
-    .asArray(olStyle.getStroke().getColor())
-    .map(colorMap);
-  const lineJoin = olStyle.getStroke().getLineJoin();
-  const lineWidth = olStyle.getStroke().getWidth();
-  const lineCap = olStyle.getStroke().getLineCap();
-  const lineMiterLimit =
-    lineJoin === 'bevel' ? 0 : olStyle.getStroke().getMiterLimit() || 10.0;
+  const stride = olGeom.getStride();
+  const flatCoordinates = olGeom.getFlatCoordinates();
 
-  const LINE_OPS = {
-    STARTCAP_UP: 0,
-    STARTCAP_DOWN: 1,
-    ENDCAP_UP: 2,
-    ENDCAP_DOWN: 3,
-    LINESTART_UP: 4,
-    LINESTART_DOWN: 5,
-    LINEEND_UP: 6,
-    LINEEND_DOWN: 7
+  const color = olcolor.asArray(olStyle.getStroke().getColor());
+  const join = olStyle.getStroke().getLineJoin();
+  const width = olStyle.getStroke().getWidth();
+  const cap = olStyle.getStroke().getLineCap();
+  const miterLimit =
+    join === 'bevel' ? 0 : olStyle.getStroke().getMiterLimit() || 10.0;
+
+  const params = {
+    join,
+    cap,
+    miterLimit
   };
-
-  let line;
-
-  // generate a new mesh from an outer ring & holes
-  const appendArrays = () => {
-    const appendLineVertex = (currentPos, prevPos, nextPos, operation) => {
-      if (!strokeColor) {
-        return;
-      }
-      arrays.linePositions.push(currentPos.x, currentPos.y, 0);
-      arrays.lineColors.push(
-        strokeColor[0],
-        strokeColor[1],
-        strokeColor[2],
-        strokeColor[3]
-      );
-      arrays.lineNeighbours.push(prevPos.x, prevPos.y, nextPos.x, nextPos.y);
-      let direction =
-        operation === LINE_OPS.STARTCAP_UP ||
-        operation === LINE_OPS.LINESTART_UP ||
-        operation === LINE_OPS.LINEEND_UP
-          ? 1.0
-          : -1.0;
-      const isLineStart =
-        operation === LINE_OPS.STARTCAP_UP ||
-        operation === LINE_OPS.STARTCAP_DOWN ||
-        operation === LINE_OPS.LINESTART_UP ||
-        operation === LINE_OPS.LINESTART_DOWN;
-      const isCap =
-        operation === LINE_OPS.STARTCAP_UP ||
-        operation === LINE_OPS.STARTCAP_DOWN ||
-        operation === LINE_OPS.ENDCAP_UP ||
-        operation === LINE_OPS.ENDCAP_DOWN;
-      const isRound =
-        operation === LINE_OPS.CAP_UP || operation === LINE_OPS.CAP_DOWN
-          ? lineCap === 'round'
-          : lineJoin === 'round';
-      const flags =
-        direction *
-        ((isLineStart ? 1 : 0) + (isCap ? 2 : 0) + (isRound ? 4 : 0) + 8);
-      arrays.lineParams.push(
-        flags,
-        lineWidth,
-        lineMiterLimit,
-        0.0 // free slot
-      );
-    };
-
-    // add vertices & colors to arrays (outer ring and holes)
-    let i, l;
-    let lineOffset, currentPos, prevPos, nextPos, nextNextPos;
-    for (i = 0, l = line.length - 1; i < l; i++) {
-      // line (only joins, no cap)
-      lineOffset = arrays.linePositions.length / 3;
-      currentPos = line[i];
-      prevPos = i > 0 ? line[i - 1] : line[0];
-      nextPos = line[i + 1];
-      nextNextPos = i < l - 1 ? line[i + 2] : line[line.length - 1];
-      appendLineVertex(currentPos, prevPos, nextPos, LINE_OPS.LINESTART_DOWN);
-      appendLineVertex(currentPos, prevPos, nextPos, LINE_OPS.LINESTART_UP);
-      appendLineVertex(nextPos, currentPos, nextNextPos, LINE_OPS.LINEEND_DOWN);
-      appendLineVertex(nextPos, currentPos, nextNextPos, LINE_OPS.LINEEND_UP);
-      // join area: TODO
-      // segment
-      arrays.lineIndices.push(
-        lineOffset + 0,
-        lineOffset + 2,
-        lineOffset + 3,
-        lineOffset + 0,
-        lineOffset + 3,
-        lineOffset + 1
-      );
-    }
-  };
-
   // loop on ends: create a new line everytime
   for (let i = 0; i < ends.length; i++) {
     if (ends[i] === ends[i - 1]) {
       continue;
     }
 
-    line = flatCoordinates
-      .slice(i === 0 ? 0 : ends[i - 1], ends[i])
-      .reduce(coordReduce, []);
-    appendArrays();
+    lineGeom.pushLine(
+      params,
+      width,
+      color,
+      flatCoordinates,
+      i === 0 ? 0 : ends[i - 1],
+      ends[i],
+      stride
+    );
   }
-
-  appendArrays();
 }
