@@ -143,11 +143,20 @@ Object.assign(BaseTileLayer.prototype, {
           });
 
         // mesh generation is added to queue
-        // var tileCopy = tile;
+        let tileCopy = tile;
         // uncomment to use job queue
-        // addJobToQueue(function () {
-        this._reprojectTileAndGenerate(tile);
-        // }, this, 1000);
+        addJobToQueue(
+          function() {
+            this._reprojectTileAndGenerate(tileCopy);
+          },
+          this,
+          3000
+        );
+
+        // placeholder
+        this.tileMeshes[tileKey] = {
+          toDelete: false
+        };
       }
 
       if (this.tileMeshes[tileKey]) {
@@ -180,6 +189,7 @@ Object.assign(BaseTileLayer.prototype, {
   },
 
   _reprojectTileAndGenerate(olTile) {
+    var start = Date.now();
     // var projection = this.source.getProjection();
     var tileGrid = this.source.getTileGrid();
     var tileKey = olTile.getKey();
@@ -207,6 +217,8 @@ Object.assign(BaseTileLayer.prototype, {
     //       sourceTile.setProjection(projection);
     //     }
     //   });
+
+    console.log(`tile [${tileKey}] generated in ${Date.now() - start}ms`);
   },
 
   getStyleFunction() {

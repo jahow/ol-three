@@ -24,11 +24,13 @@ export function addJobToQueue(callback, thisObj, timeout) {
  */
 export function updateJobQueue() {
   let startTime = Date.now();
+  jobQueue.length && console.log('started job queue...');
   while (jobQueue.length) {
     let job = jobQueue.shift();
 
     // timeout check
     if (job.timeout < Date.now()) {
+      console.log('dropped a job... sorry');
       continue;
     }
 
