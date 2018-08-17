@@ -87,7 +87,6 @@ scene.add(vtLayer.rootMesh);
 var renderer = getRenderer();
 renderer.setSize(mapWidth, mapHeight);
 renderer.setClearColor(new Color(0xf8f4f0));
-// renderer.sortObjects = false;
 mapEl.appendChild(renderer.domElement);
 
 // var projectionExtent = osmSource.getProjection().getExtent();
@@ -136,6 +135,7 @@ document.body.appendChild(rendererStats.domElement);
   updateJobQueue();
 
   renderer.render(scene, camera, undefined);
+  // renderer.render(vtLayer.maskScene, camera, undefined);
 
   stats.end();
   rendererStats.update(renderer);

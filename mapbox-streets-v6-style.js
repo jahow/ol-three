@@ -78,7 +78,9 @@ export function createMapboxStreetsV6Style(Style, Fill, Stroke, Icon, Text) {
       styles[length++] = line;
     } else if (layer == 'water') {
       fill.setColor('#a0c8f0');
-      styles[length++] = polygon;
+      stroke.setColor('#8badce');
+      stroke.setWidth(1);
+      styles[length++] = strokedPolygon;
     } else if (layer == 'aeroway' && geom == 'Polygon') {
       fill.setColor('rgb(242,239,235)');
       styles[length++] = polygon;

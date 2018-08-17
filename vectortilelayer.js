@@ -13,13 +13,14 @@ import { Mesh } from 'three/src/objects/Mesh';
 import { BufferGeometry } from 'three/src/core/BufferGeometry';
 import { Float32BufferAttribute } from 'three/src/core/BufferAttribute';
 import { ShaderMaterial } from 'three/src/materials/ShaderMaterial';
+import { MeshBasicMaterial } from 'three/src/materials/MeshBasicMaterial';
 
 import BaseTileLayer from './basetilelayer';
 
 import { renderFeature } from './vector';
 import { getMaxResolution, getCenterResolution, getActiveCamera } from './view';
 import { getMapSize, getRenderer } from './common';
-import { PolygonGeometry, LineGeometry } from './utils/meshes.geometry';
+import { PolygonGeometry, LinestringGeometry } from './utils/meshes.geometry';
 
 import polygonVS from './polygon-vtVS.glsl';
 import polygonFS from './polygon-vtFS.glsl';
@@ -39,7 +40,6 @@ const polygonMaskMaterial = new ShaderMaterial({
   uniforms: {},
   vertexShader: polygonVS,
   fragmentShader: polygonMaskFS,
-  transparent: false,
   depthTest: false
 });
 
@@ -60,7 +60,11 @@ var VectorTileLayer = function(olTileSource) {
 
   this.maskRenderTarget = new WebGLRenderTarget(
     getMapSize()[0],
-    getMapSize()[1]
+    getMapSize()[1],
+    {
+      depthBuffer: false,
+      stencilBuffer: false
+    }
   );
   this.maskScene = new Scene();
   this.maskMeshes = {};
@@ -69,14 +73,16 @@ var VectorTileLayer = function(olTileSource) {
   polygonMaterial.uniforms.uMaskTexture = {
     value: this.maskRenderTarget.texture
   };
-  lineMaterial.uniforms.uMaskTexture = {
-    value: this.maskRenderTarget.texture
+  polygonMaterial.uniforms.uScreenSize = {
+    value: getMapSize()
   };
-
   lineMaterial.uniforms.resolution = {
     value: 0
   };
-  lineMaterial.uniforms.screensize = {
+  lineMaterial.uniforms.uMaskTexture = {
+    value: this.maskRenderTarget.texture
+  };
+  lineMaterial.uniforms.uScreenSize = {
     value: getMapSize()
   };
 };
@@ -89,21 +95,12 @@ Object.assign(VectorTileLayer.prototype, {
       return;
     }
 
-    // generate arrays for colors, positions
-    // const arrays = {
-    //   positions: [],
-    //   colors: [],
-    //   indices: [],
-    //   linePositions: [],
-    //   lineIndices: [],
-    //   lineNeighbours: [],
-    //   lineParams: [],
-    //   lineColors: []
-    // };
     const z = tile.getTileCoord()[0];
 
-    const polyGeom = new PolygonGeometry();
-    const lineGeom = new LineGeometry({
+    const polyGeom = new PolygonGeometry({
+      baseZ: z
+    });
+    const lineGeom = new LinestringGeometry({
       baseZ: z
     });
 
@@ -138,17 +135,9 @@ Object.assign(VectorTileLayer.prototype, {
       sourceTile.setProjection(tileRenderProj);
     });
 
-    // use arrays to generate a geometry
-    const geom = new BufferGeometry();
-    // geom.setIndex(arrays.indices);
-    // geom.addAttribute(
-    //   'position',
-    //   new Float32BufferAttribute(arrays.positions, 3)
-    // );
-    // geom.addAttribute('color', new Float32BufferAttribute(arrays.colors, 4));
-    // geom.addAttribute('uv', new Float32BufferAttribute(arrays.uvs, 2));
-
-    const rootMesh = new Mesh(geom, polygonMaterial);
+    // generate polygon mesh
+    polyGeom.commit();
+    const rootMesh = new Mesh(polyGeom, polygonMaterial);
 
     // set position & scale of rootMesh
     const worldExtent = tileRenderProj.getWorldExtent();
@@ -213,7 +202,7 @@ Object.assign(VectorTileLayer.prototype, {
 
   updateTileMesh: function(mesh) {
     if (mesh._lineMesh) {
-      mesh._lineMesh.renderOrder = mesh._lineMesh.renderOrder + 1;
+      mesh._lineMesh.renderOrder = mesh.renderOrder + 1;
     }
   },
 
@@ -227,11 +216,11 @@ Object.assign(VectorTileLayer.prototype, {
   },
 
   postUpdate: function() {
-    getRenderer().clear(this.maskScene, this.maskRenderTarget);
     getRenderer().render(
       this.maskScene,
       getActiveCamera(),
-      this.maskRenderTarget
+      this.maskRenderTarget,
+      true
     );
   }
 });

@@ -1,4 +1,3 @@
-varying vec2 vScreenUV;
 varying vec4 vColor;
 varying vec2 vTilePos;
 varying float vTileZoom;
@@ -8,7 +7,7 @@ attribute vec4 params;   // flags, line width, miter limit, <available>
 attribute vec4 neighbours;
 
 uniform float resolution;
-uniform vec2 screensize;
+uniform vec2 uScreenSize;
 uniform float fov;		// in rads
 
 float epsilon = 0.00000001;
@@ -29,7 +28,7 @@ void main(void) {
 
   // compute the size of one unit on screen; used to render a constant line width
   vec4 worldPos = modelMatrix * vec4(current, 0.0, 1.0);
-  float angle = fov / screensize.y;
+  float angle = fov / uScreenSize.y;
   float scaling = modelMatrix[0][0];
   float unitSize = length(cameraPosition - worldPos.xyz) * tan(angle) / scaling;
 
@@ -51,10 +50,6 @@ void main(void) {
   }
 
   gl_Position = projectionMatrix * modelViewMatrix * vec4(current + offset, 0.0, 1.0);
-  vScreenUV = vec2(
-    gl_Position.x / gl_Position.z * 0.5 + 0.5,
-    gl_Position.y / gl_Position.z * 0.5 + 0.5
-  );
   vColor = color;
   vTileZoom = position.z;
   vTilePos = current + offset;

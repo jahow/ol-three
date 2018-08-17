@@ -14,7 +14,7 @@ const LINE_OPS = {
 };
 
 export class PolygonGeometry extends BufferGeometry {
-  constructor() {
+  constructor(params) {
     super();
 
     this._arrays = {
@@ -23,6 +23,7 @@ export class PolygonGeometry extends BufferGeometry {
       uvs: [],
       indices: []
     };
+    this._baseZ = (params && params.baseZ) || 0;
   }
 
   hasGeometry() {
@@ -31,32 +32,37 @@ export class PolygonGeometry extends BufferGeometry {
 
   // coords are expected to be flat arrays with a stride of 3
   // color is an array of 4 values between 0 and 1
-  pushPolygon(color, coords, start, endOuterRing, ...endsHoles) {
+  pushPolygon(color, stride, coords, outerStart, outerEnd, holeEnds) {
     const indexOffset = this._arrays.positions.length / 3;
-    let i, l;
+    let i,
+      l = holeEnds.length ? holeEnds[holeEnds.length - 1] : outerEnd;
 
     // add vertices & colors to arrays (up to end of last hole)
-    const positions = [];
-    for (i = start, l = endsHoles[endsHoles.length - 1]; i < l; i += 3) {
-      positions.push(coords[i], coords[i + 1], 0);
-      this._arrays.colors.push(color[0], color[1], color[2], color[3]);
+    for (i = outerStart; i < l; i += stride) {
+      this._arrays.positions.push(coords[i], coords[i + 1], this._baseZ);
+      this._arrays.colors.push(
+        color[0] / 255,
+        color[1] / 255,
+        color[2] / 255,
+        color[3]
+      );
       this._arrays.uvs.push(coords[i], coords[i + 1]); // world uvs
     }
-    Array.prototype.push.apply(this._arrays.positions, positions);
 
-    // adjust ends holes for earcut
-    endsHoles.unshift(endOuterRing);
-    endsHoles.pop();
-    for (i = 0; i < endsHoles.length; i++) {
-      endsHoles[i] += 1 - start;
+    const holeStarts = holeEnds.slice();
+    holeStarts.unshift(outerEnd);
+    holeStarts.pop();
+    for (i = 0; i < holeStarts.length; i++) {
+      holeStarts[i] = (holeStarts[i] - outerStart) / stride;
     }
 
     // triangulate shape to add indices
+    const prevLength = this._arrays.indices.length;
     Array.prototype.push.apply(
       this._arrays.indices,
-      earcut(this._arrays.positions, endsHoles, 3)
+      earcut(this._arrays.positions.slice(indexOffset * 3), holeStarts, 3)
     );
-    for (i = 0; i < this._arrays.indices.length; i++) {
+    for (i = prevLength; i < this._arrays.indices.length; i++) {
       this._arrays.indices[i] += indexOffset;
     }
 
@@ -84,7 +90,7 @@ export class PolygonGeometry extends BufferGeometry {
   }
 }
 
-export class LineGeometry extends BufferGeometry {
+export class LinestringGeometry extends BufferGeometry {
   constructor(params) {
     super();
 
@@ -154,7 +160,7 @@ export class LineGeometry extends BufferGeometry {
 
   // a line is a series of segments
   // coords are expected to be flat arrays
-  // params: join ('bevel'/'round'/null), cap ('square'/'round'/null), miterLimit
+  // params: join ('bevel'/'round'/null), cap ('square'/'round'/null), miterLimit, closed (bool)
   // color is an array of 4 values [0-255, 0-255, 0-255, 0-1]
   pushLine(params, width, color, coords, start, end, stride) {
     if (!color) {
@@ -233,44 +239,6 @@ export class LineGeometry extends BufferGeometry {
         nextNextY,
         LINE_OPS.LINEEND_UP
       );
-      // join area: TODO
-      // segment
-      this._arrays.indices.push(
-        lineOffset + 0,
-        lineOffset + 2,
-        lineOffset + 3,
-        lineOffset + 0,
-        lineOffset + 3,
-        lineOffset + 1
-      );
-    }
-
-    return this;
-  }
-
-  // a ring is a closed line (no cap)
-  pushRing(params, width, color, coords, start, end) {
-    if (!color) {
-      return;
-    }
-    let lineOffset, currentPos, prevPos, nextPos, nextNextPos;
-    let i, l;
-    for (i = start, l = end; i < l; i++) {
-      // line (only joins, no cap)
-      lineOffset = this._arrays.positions.length / 3;
-      currentPos = coords[i];
-      prevPos = i > 0 ? coords[i - 1] : coords[start];
-      nextPos = coords[i + 1];
-      nextNextPos = i < l - 1 ? coords[i + 2] : coords[end];
-      this._appendVertex(currentPos, prevPos, nextPos, LINE_OPS.LINESTART_DOWN);
-      this._appendVertex(currentPos, prevPos, nextPos, LINE_OPS.LINESTART_UP);
-      this._appendVertex(
-        nextPos,
-        currentPos,
-        nextNextPos,
-        LINE_OPS.LINEEND_DOWN
-      );
-      this._appendVertex(nextPos, currentPos, nextNextPos, LINE_OPS.LINEEND_UP);
       // join area: TODO
       // segment
       this._arrays.indices.push(
