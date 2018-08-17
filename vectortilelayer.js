@@ -19,7 +19,7 @@ import { LineBasicMaterial } from 'three/src/materials/LineBasicMaterial';
 import BaseTileLayer from './basetilelayer';
 
 import { renderFeature } from './vector';
-import { getMaxResolution, getActiveCamera } from './view';
+import { getMaxResolution, getCenterResolution, getActiveCamera } from './view';
 import { getMapSize, getRenderer } from './common';
 
 import polygonVS from './polygon-vtVS.glsl';
@@ -223,7 +223,7 @@ Object.assign(VectorTileLayer.prototype, {
 
   preUpdate: function() {
     lineMaterial.uniforms.resolution = {
-      value: getMaxResolution()
+      value: getCenterResolution()
     };
   },
 
