@@ -76,6 +76,9 @@ var VectorTileLayer = function(olTileSource) {
   lineMaterial.uniforms.resolution = {
     value: 0
   };
+  lineMaterial.uniforms.screensize = {
+    value: getMapSize()
+  };
 };
 
 VectorTileLayer.prototype = Object.create(BaseTileLayer.prototype);
@@ -217,6 +220,9 @@ Object.assign(VectorTileLayer.prototype, {
   preUpdate: function() {
     lineMaterial.uniforms.resolution = {
       value: getCenterResolution()
+    };
+    lineMaterial.uniforms.fov = {
+      value: (getActiveCamera().fov * Math.PI * 2) / 360
     };
   },
 

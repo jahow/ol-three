@@ -8,6 +8,8 @@ attribute vec4 params;   // flags, line width, miter limit, <available>
 attribute vec4 neighbours;
 
 uniform float resolution;
+uniform vec2 screensize;
+uniform float fov;		// in rads
 
 float epsilon = 0.00000001;
 
@@ -21,8 +23,15 @@ bool checkFlag(in float flags, in float bit) {
 }
 
 void main(void) {
-  // apply model matrix to a unit
-  float unitSize = length(modelMatrix * vec4(1.0, 0.0, 0.0, 1.0) - modelMatrix * vec4(0.0, 0.0, 0.0, 1.0));
+  vec2 prev = neighbours.xy;
+  vec2 current = position.xy;
+  vec2 next = neighbours.zw;
+
+  // compute the size of one unit on screen; used to render a constant line width
+  vec4 worldPos = modelMatrix * vec4(current, 0.0, 1.0);
+  float angle = fov / screensize.y;
+  float scaling = modelMatrix[0][0];
+  float unitSize = length(cameraPosition - worldPos.xyz) * tan(angle) / scaling;
 
   vec2 offset = vec2(0.0);
   float flags = abs(params.x);
@@ -30,11 +39,8 @@ void main(void) {
   bool isCap = checkFlag(flags, 1.0);
   bool isRound = checkFlag(flags, 2.0);
   float direction = sign(params.x);
-  float linewidth = params.y * resolution / unitSize;    // line width is always the same regardless of eye pos
+  float linewidth = params.y * unitSize;    // line width is always the same regardless of eye pos
   float miterLimit = params.z;
-  vec2 prev = neighbours.xy;
-  vec2 current = position.xy;
-  vec2 next = neighbours.zw;
 
   if (isCap) {
     // todo
